@@ -143,23 +143,21 @@ export default function App() {
         {/* 헤더 — setup 화면에서만 표시 */}
         {step === 'setup' && (
           <div className="mb-6 text-center">
+            {/* Douzone × Replit Makeathon 2026 로고 */}
             <div
-              className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-3"
-              style={{ backgroundColor: '#3182F6' }}
+              className="inline-flex flex-col items-center justify-center px-5 py-3 rounded-2xl mb-3"
+              style={{ backgroundColor: '#1B2254' }}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              <p className="text-xs font-semibold tracking-widest uppercase mb-0.5" style={{ color: '#9CA3C8', letterSpacing: '0.15em' }}>
+                Team Maker
+              </p>
+              <p className="text-sm font-extrabold leading-tight" style={{ color: 'white', letterSpacing: '-0.01em' }}>
+                Douzone <span style={{ color: '#F97316' }}>×</span> Replit
+              </p>
+              <p className="text-xs font-bold" style={{ color: '#CBD5E1' }}>
+                Makeathon 2026
+              </p>
             </div>
-            <h1 className="text-xl font-bold tracking-tight" style={{ color: '#191F28' }}>
-              밸런스 팀 메이커
-            </h1>
-            <p className="mt-0.5 text-xs" style={{ color: '#8B95A1' }}>
-              2인 1조 · 최대 {MAX_TEAMS}팀 · 랜덤 구성
-            </p>
           </div>
         )}
 
