@@ -247,9 +247,9 @@ function SetupStep({
   const pairedIds = new Set(prePairs.flatMap((p) => [p.p1Id, p.p2Id]));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 max-w-xl mx-auto w-full">
       {/* 탭 */}
-      <div className="flex rounded-2xl p-1 gap-1 max-w-xs" style={{ backgroundColor: '#E5E8EB' }}>
+      <div className="flex rounded-2xl p-1 gap-1" style={{ backgroundColor: '#E5E8EB' }}>
         {(['manual', 'excel'] as const).map((tab) => (
           <button
             key={tab}
@@ -270,7 +270,7 @@ function SetupStep({
       </div>
 
       {activeTab === 'manual' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+        <div className="flex flex-col gap-5">
           {/* 참가자 카드 */}
           <div className="rounded-3xl p-6 bg-white flex flex-col gap-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div className="flex items-center justify-between">
