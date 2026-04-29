@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Award, Player, PrePair, PairedTeam, Step } from './types';
 import { makeRandomTeams } from './utils/random';
 import PlayerRow from './components/PlayerRow';
@@ -17,14 +17,40 @@ function createPlayer(name = ''): Player {
   return { id: crypto.randomUUID(), name };
 }
 
+const STORAGE_KEY = 'tm_state';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as {
+      step: Step;
+      players: Player[];
+      prePairs: PrePair[];
+      teams: PairedTeam[];
+      awards: Record<number, Award>;
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
-  const [step, setStep] = useState<Step>('setup');
-  const [players, setPlayers] = useState<Player[]>([createPlayer(), createPlayer()]);
-  const [prePairs, setPrePairs] = useState<PrePair[]>([]);
-  const [teams, setTeams] = useState<PairedTeam[]>([]);
-  const [awards, setAwards] = useState<Record<number, Award>>({});
+  const saved = loadState();
+  const [step, setStep] = useState<Step>(saved?.step ?? 'setup');
+  const [players, setPlayers] = useState<Player[]>(
+    saved?.players?.length ? saved.players : [createPlayer(), createPlayer()]
+  );
+  const [prePairs, setPrePairs] = useState<PrePair[]>(saved?.prePairs ?? []);
+  const [teams, setTeams] = useState<PairedTeam[]>(saved?.teams ?? []);
+  const [awards, setAwards] = useState<Record<number, Award>>(saved?.awards ?? {});
   const [activeTab, setActiveTab] = useState<'manual' | 'excel'>('manual');
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  /* ── localStorage 동기화 ── */
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, players, prePairs, teams, awards }));
+  }, [step, players, prePairs, teams, awards]);
 
   /* ── 참가자 조작 ── */
   const addPlayer = useCallback(() => {
@@ -93,7 +119,10 @@ export default function App() {
   }, [validPlayers, prePairs]);
 
   const handleReset = () => {
+    localStorage.removeItem(STORAGE_KEY);
     setStep('setup');
+    setPlayers([createPlayer(), createPlayer()]);
+    setPrePairs([]);
     setTeams([]);
     setAwards({});
   };
