@@ -138,19 +138,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F2F4F6' }}>
-      <div className="mx-auto max-w-md px-4 pb-16 pt-8">
+      <div className="mx-auto max-w-5xl px-6 pb-16 pt-10">
 
         {/* 헤더 — setup 화면에서만 표시 */}
         {step === 'setup' && (
-          <div className="mb-6 text-center">
-            <div className="inline-flex flex-col items-center gap-1 mb-2">
-              <p className="text-xl font-extrabold tracking-tight" style={{ color: '#191F28' }}>
-                DOUZONE <span style={{ color: '#F97316' }}>×</span> Replit
-              </p>
-              <p className="text-sm font-semibold" style={{ color: '#8B95A1' }}>
-                Makeathon 2026
-              </p>
-            </div>
+          <div className="mb-8 text-center">
+            <p className="text-2xl font-extrabold tracking-tight" style={{ color: '#191F28' }}>
+              DOUZONE <span style={{ color: '#F97316' }}>×</span> Replit
+            </p>
+            <p className="text-base font-semibold mt-0.5" style={{ color: '#8B95A1' }}>
+              Makeathon 2026 · Team Maker
+            </p>
           </div>
         )}
 
@@ -249,9 +247,9 @@ function SetupStep({
   const pairedIds = new Set(prePairs.flatMap((p) => [p.p1Id, p.p2Id]));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* 탭 */}
-      <div className="flex rounded-2xl p-1 gap-1" style={{ backgroundColor: '#E5E8EB' }}>
+      <div className="flex rounded-2xl p-1 gap-1 max-w-xs" style={{ backgroundColor: '#E5E8EB' }}>
         {(['manual', 'excel'] as const).map((tab) => (
           <button
             key={tab}
@@ -272,13 +270,13 @@ function SetupStep({
       </div>
 
       {activeTab === 'manual' && (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
           {/* 참가자 카드 */}
-          <div className="rounded-3xl p-5 bg-white flex flex-col gap-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div className="rounded-3xl p-6 bg-white flex flex-col gap-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold" style={{ color: '#191F28' }}>
+              <span className="text-base font-semibold" style={{ color: '#191F28' }}>
                 참가자
-                <span className="ml-1.5 text-xs font-normal" style={{ color: '#8B95A1' }}>{validCount}명</span>
+                <span className="ml-2 text-sm font-normal" style={{ color: '#8B95A1' }}>{validCount}명</span>
               </span>
             </div>
 
@@ -300,7 +298,7 @@ function SetupStep({
               type="button"
               onClick={onAddPlayer}
               disabled={players.length >= MAX_PLAYERS}
-              className="w-full h-10 rounded-2xl text-sm font-semibold flex items-center justify-center gap-1.5"
+              className="w-full h-11 rounded-2xl text-sm font-semibold flex items-center justify-center gap-1.5"
               style={{
                 backgroundColor: '#F2F4F6',
                 color: players.length >= MAX_PLAYERS ? '#B0B8C1' : '#6B7684',
@@ -316,12 +314,12 @@ function SetupStep({
           </div>
 
           {/* 사전 팀 카드 */}
-          <div className="rounded-3xl p-5 bg-white flex flex-col gap-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div className="rounded-3xl p-6 bg-white flex flex-col gap-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold" style={{ color: '#191F28' }}>
+              <span className="text-base font-semibold" style={{ color: '#191F28' }}>
                 사전 팀
                 {prePairs.length > 0 && (
-                  <span className="ml-1.5 text-xs font-normal" style={{ color: '#8B95A1' }}>{prePairs.length}쌍</span>
+                  <span className="ml-2 text-sm font-normal" style={{ color: '#8B95A1' }}>{prePairs.length}쌍</span>
                 )}
               </span>
               <span className="text-xs" style={{ color: '#8B95A1' }}>미리 짝을 정한 경우</span>
@@ -334,39 +332,39 @@ function SetupStep({
               onRemove={onRemovePrePair}
             />
           </div>
-        </>
+        </div>
       )}
 
       {activeTab === 'excel' && (
-        <div className="rounded-3xl p-5 bg-white" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div className="rounded-3xl p-6 bg-white max-w-lg" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <ExcelImport onImport={onImportExcel} />
         </div>
       )}
 
-      {/* 예상 팀 수 */}
-      {canGenerate && (
-        <div className="flex items-center justify-between px-4 py-3 rounded-2xl" style={{ backgroundColor: '#EBF3FE' }}>
-          <span className="text-sm" style={{ color: '#3182F6' }}>예상 팀 수</span>
-          <span className="text-sm font-bold" style={{ color: '#3182F6' }}>{expectedTeams}팀</span>
-        </div>
-      )}
-
-      {/* 생성 버튼 */}
-      <button
-        type="button"
-        onClick={onGenerate}
-        disabled={!canGenerate}
-        className="h-14 rounded-2xl text-base font-bold"
-        style={{
-          backgroundColor: canGenerate ? '#3182F6' : '#D1D6DB',
-          color: 'white',
-          border: 'none',
-          cursor: canGenerate ? 'pointer' : 'not-allowed',
-          boxShadow: canGenerate ? '0 4px 16px rgba(49,130,246,0.3)' : 'none',
-        }}
-      >
-        랜덤 팀 구성하기
-      </button>
+      {/* 예상 팀 수 + 생성 버튼 */}
+      <div className="flex items-center gap-4">
+        {canGenerate && (
+          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl" style={{ backgroundColor: '#EBF3FE' }}>
+            <span className="text-sm" style={{ color: '#3182F6' }}>예상 팀 수</span>
+            <span className="text-sm font-bold" style={{ color: '#3182F6' }}>{expectedTeams}팀</span>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={!canGenerate}
+          className="flex-1 h-14 rounded-2xl text-base font-bold"
+          style={{
+            backgroundColor: canGenerate ? '#3182F6' : '#D1D6DB',
+            color: 'white',
+            border: 'none',
+            cursor: canGenerate ? 'pointer' : 'not-allowed',
+            boxShadow: canGenerate ? '0 4px 16px rgba(49,130,246,0.3)' : 'none',
+          }}
+        >
+          랜덤 팀 구성하기
+        </button>
+      </div>
     </div>
   );
 }
@@ -388,9 +386,9 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-3xl p-5 bg-white" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#EBF3FE' }}>
+      <div className="rounded-3xl p-5 bg-white flex items-center justify-between gap-6" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EBF3FE' }}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M4 10L8 14L16 6" stroke="#3182F6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -403,23 +401,23 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
             </p>
           </div>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           {preFormedCount > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: '#F0FFF4' }}>
               <span className="text-xs font-semibold" style={{ color: '#22A757' }}>🔒 사전 팀</span>
-              <span className="text-xs" style={{ color: '#6B7684' }}>{preFormedCount}팀 — 신청 그대로 유지</span>
+              <span className="text-xs" style={{ color: '#6B7684' }}>{preFormedCount}팀</span>
             </div>
           )}
           {randomCount > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: '#F2F4F6' }}>
               <span className="text-xs font-semibold" style={{ color: '#4E5968' }}>🎲 랜덤 팀</span>
-              <span className="text-xs" style={{ color: '#6B7684' }}>{randomCount}팀 — 무작위 배정</span>
+              <span className="text-xs" style={{ color: '#6B7684' }}>{randomCount}팀</span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {teams.map((team) => (
           <TeamCard
             key={team.teamNumber}
@@ -429,7 +427,7 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
         ))}
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 max-w-sm">
         <button
           type="button"
           onClick={onReshuffle}
