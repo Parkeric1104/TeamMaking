@@ -1,63 +1,94 @@
-import type { Team } from '../types';
-import RatingStars from './RatingStars';
+import type { Award, PairedTeam } from '../types';
 
-const TEAM_COLORS = [
-  { bg: '#EBF3FE', accent: '#3182F6', label: '#1B6EF3' },
-  { bg: '#FFF0F0', accent: '#FF6B6B', label: '#E53E3E' },
-  { bg: '#F0FFF4', accent: '#26DE81', label: '#22A757' },
-  { bg: '#FFF8E1', accent: '#FFCA28', label: '#D4A017' },
-  { bg: '#F3E8FF', accent: '#9B59B6', label: '#7D3C98' },
-  { bg: '#FFF0E6', accent: '#FF9F43', label: '#E67E22' },
+const PALETTES = [
+  { bg: '#EBF3FE', accent: '#3182F6', text: '#1B6EF3' },
+  { bg: '#FFF0F0', accent: '#FF6B6B', text: '#E53E3E' },
+  { bg: '#F0FFF4', accent: '#26DE81', text: '#22A757' },
+  { bg: '#FFF8E1', accent: '#FFCA28', text: '#D4A017' },
+  { bg: '#F3E8FF', accent: '#9B59B6', text: '#7D3C98' },
+  { bg: '#FFF0E6', accent: '#FF9F43', text: '#E67E22' },
+  { bg: '#E8F8FF', accent: '#00B4D8', text: '#0096C7' },
+  { bg: '#F0F7FF', accent: '#4361EE', text: '#3A56D4' },
 ];
 
 interface Props {
-  team: Team;
-  avgRating: number;
+  team: PairedTeam;
+  award?: Award | null;
+  onAwardClick?: () => void;
 }
 
-export default function TeamCard({ team, avgRating }: Props) {
-  const color = TEAM_COLORS[(team.id - 1) % TEAM_COLORS.length];
+export default function TeamCard({ team, award, onAwardClick }: Props) {
+  const p = PALETTES[(team.teamNumber - 1) % PALETTES.length];
 
   return (
     <div
-      className="rounded-3xl p-5 flex flex-col gap-4"
-      style={{ backgroundColor: color.bg }}
+      className="rounded-2xl p-4 flex flex-col gap-3 relative"
+      style={{
+        backgroundColor: award ? award.bg : p.bg,
+        border: award ? `2px solid ${award.color}33` : '2px solid transparent',
+        transition: 'background-color 0.2s, border-color 0.2s',
+      }}
     >
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-            style={{ backgroundColor: color.accent }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+            style={{ backgroundColor: award ? award.color : p.accent }}
           >
-            {team.id}
+            {team.teamNumber}
           </div>
-          <span className="font-bold text-base" style={{ color: '#191F28' }}>
-            팀 {team.id}
+          <span className="text-sm font-bold" style={{ color: '#191F28' }}>
+            팀 {team.teamNumber}
           </span>
         </div>
-        <div className="text-right">
-          <div className="text-xs font-medium" style={{ color: color.label }}>
-            총 {team.totalRating}점
-          </div>
-          <div className="text-xs" style={{ color: '#8B95A1' }}>
-            평균 {avgRating.toFixed(1)}점
-          </div>
+        <div className="flex items-center gap-1.5">
+          {team.isPreFormed && !award && (
+            <span
+              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: p.accent + '22', color: p.text }}
+            >
+              사전 팀
+            </span>
+          )}
+          {award && (
+            <span
+              className="text-xs font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: award.color + '22', color: award.color }}
+            >
+              {award.emoji} {award.label}
+            </span>
+          )}
+          {onAwardClick && (
+            <button
+              type="button"
+              onClick={onAwardClick}
+              className="w-7 h-7 flex items-center justify-center rounded-full"
+              style={{
+                backgroundColor: award ? award.color + '22' : '#E5E8EB',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 14,
+              }}
+              title="시상하기"
+            >
+              🏆
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 선수 목록 */}
-      <div className="flex flex-col gap-2">
-        {team.players.map((p) => (
+      {/* 멤버 */}
+      <div className="flex gap-2">
+        {team.players.map((player) => (
           <div
-            key={p.id}
-            className="flex items-center justify-between px-3 py-2.5 rounded-2xl bg-white"
-            style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+            key={player.id}
+            className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl bg-white gap-1"
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
-            <span className="text-sm font-semibold" style={{ color: '#191F28' }}>
-              {p.name || '(이름 없음)'}
+            <span className="text-sm font-semibold text-center px-1 leading-tight" style={{ color: '#191F28' }}>
+              {player.name || '(이름 없음)'}
             </span>
-            <RatingStars value={p.rating} readonly size="sm" />
           </div>
         ))}
       </div>

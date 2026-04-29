@@ -1,99 +1,200 @@
-import { useState, useCallback } from 'react';
-import type { Player, Team, Step } from './types';
-import { balanceTeams } from './utils/balance';
+import { useState, useCallback, useRef } from 'react';
+import type { Award, Player, PrePair, PairedTeam, Step } from './types';
+import { makeRandomTeams } from './utils/random';
 import PlayerRow from './components/PlayerRow';
 import TeamCard from './components/TeamCard';
+import ExcelImport from './components/ExcelImport';
+import PrePairSection from './components/PrePairSection';
+import ReviewStep from './components/ReviewStep';
+import GeneratingStep from './components/GeneratingStep';
+import AwardingStep from './components/AwardingStep';
+import CeremonyStep from './components/CeremonyStep';
 
-const TEAM_COLORS_BG = ['#EBF3FE', '#FFF0F0', '#F0FFF4', '#FFF8E1', '#F3E8FF', '#FFF0E6'];
+const MAX_TEAMS = 50;
+const MAX_PLAYERS = MAX_TEAMS * 2;
 
-function createPlayer(name = '', rating = 3): Player {
-  return { id: crypto.randomUUID(), name, rating };
+function createPlayer(name = ''): Player {
+  return { id: crypto.randomUUID(), name };
 }
 
 export default function App() {
   const [step, setStep] = useState<Step>('setup');
-  const [players, setPlayers] = useState<Player[]>([
-    createPlayer('', 3),
-    createPlayer('', 3),
-  ]);
-  const [numTeams, setNumTeams] = useState(2);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [players, setPlayers] = useState<Player[]>([createPlayer(), createPlayer()]);
+  const [prePairs, setPrePairs] = useState<PrePair[]>([]);
+  const [teams, setTeams] = useState<PairedTeam[]>([]);
+  const [awards, setAwards] = useState<Record<number, Award>>({});
+  const [activeTab, setActiveTab] = useState<'manual' | 'excel'>('manual');
+  const bottomRef = useRef<HTMLDivElement>(null);
 
+  /* ── 참가자 조작 ── */
   const addPlayer = useCallback(() => {
+    if (players.length >= MAX_PLAYERS) return;
     setPlayers((prev) => [...prev, createPlayer()]);
-  }, []);
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+  }, [players.length]);
 
   const removePlayer = useCallback((id: string) => {
     setPlayers((prev) => prev.filter((p) => p.id !== id));
+    // 연관 사전 팀도 제거
+    setPrePairs((prev) => prev.filter((pair) => pair.p1Id !== id && pair.p2Id !== id));
   }, []);
 
-  const updatePlayer = useCallback((id: string, field: keyof Player, value: string | number) => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
-    );
+  const updatePlayer = useCallback((id: string, name: string) => {
+    setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
   }, []);
 
-  const handleGenerate = () => {
-    if (players.length < numTeams) return;
-    const result = balanceTeams(players, numTeams);
-    setTeams(result);
-    setStep('result');
+  /* ── 사전 팀 조작 ── */
+  const addPrePair = useCallback((p1Id: string, p2Id: string) => {
+    setPrePairs((prev) => [...prev, { id: crypto.randomUUID(), p1Id, p2Id }]);
+  }, []);
+
+  const removePrePair = useCallback((id: string) => {
+    setPrePairs((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  /* ── 엑셀 임포트 ── */
+  const importFromExcel = useCallback((imported: Player[], importedPairs: PrePair[]) => {
+    setPlayers((prev) => {
+      const merged = [...prev.filter((p) => p.name), ...imported];
+      return merged.slice(0, MAX_PLAYERS);
+    });
+    setPrePairs((prev) => [...prev, ...importedPairs]);
+    setActiveTab('manual');
+  }, []);
+
+  /* ── 팀 생성 ── */
+  const validPlayers = players.filter((p) => p.name.trim());
+  const pairedIds = new Set(prePairs.flatMap((p) => [p.p1Id, p.p2Id]));
+  const soloCount = validPlayers.filter((p) => !pairedIds.has(p.id)).length;
+  const expectedTeams = prePairs.length + Math.floor(soloCount / 2);
+  const canGenerate = validPlayers.length >= 2;
+
+  const handleGoReview = () => {
+    if (!canGenerate) return;
+    setStep('review');
   };
+
+  const handleGenerate = useCallback(() => {
+    setStep('generating');
+  }, []);
+
+  const handleGeneratingDone = useCallback(() => {
+    setTeams(makeRandomTeams(validPlayers, prePairs));
+    setStep('result');
+  }, [validPlayers, prePairs]);
 
   const handleReshuffle = () => {
-    // 같은 플레이어로 재셔플 (약간의 랜덤성 추가)
-    const shuffled = [...players].sort(() => Math.random() - 0.5);
-    const result = balanceTeams(shuffled, numTeams);
-    setTeams(result);
+    setStep('generating');
   };
+
+  const handleReshuffleDone = useCallback(() => {
+    setTeams(makeRandomTeams(validPlayers, prePairs));
+    setStep('result');
+  }, [validPlayers, prePairs]);
 
   const handleReset = () => {
     setStep('setup');
     setTeams([]);
+    setAwards({});
   };
 
-  const maxRating = Math.max(...teams.map((t) => t.totalRating), 1);
+  const handleSetAward = useCallback((teamNumber: number, award: Award | null) => {
+    setAwards((prev) => {
+      const next = { ...prev };
+      if (award) next[teamNumber] = award;
+      else delete next[teamNumber];
+      return next;
+    });
+  }, []);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F2F4F6' }}>
-      <div className="mx-auto max-w-md px-4 pb-12 pt-8">
+      <div className="mx-auto max-w-md px-4 pb-16 pt-8">
 
-        {/* 헤더 */}
-        <div className="mb-8 text-center">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-            style={{ backgroundColor: '#3182F6' }}
-          >
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M6 14L12 20L22 8" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+        {/* 헤더 — setup 화면에서만 표시 */}
+        {step === 'setup' && (
+          <div className="mb-6 text-center">
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-3"
+              style={{ backgroundColor: '#3182F6' }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="white" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight" style={{ color: '#191F28' }}>
+              밸런스 팀 메이커
+            </h1>
+            <p className="mt-0.5 text-xs" style={{ color: '#8B95A1' }}>
+              2인 1조 · 최대 {MAX_TEAMS}팀 · 랜덤 구성
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#191F28' }}>
-            밸런스 팀 메이커
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: '#8B95A1' }}>
-            실력 기반으로 균형 잡힌 팀을 자동 구성해요
-          </p>
-        </div>
+        )}
 
         {step === 'setup' && (
           <SetupStep
             players={players}
-            numTeams={numTeams}
+            prePairs={prePairs}
+            validCount={validPlayers.length}
+            expectedTeams={expectedTeams}
+            activeTab={activeTab}
+            canGenerate={canGenerate}
+            bottomRef={bottomRef}
             onAddPlayer={addPlayer}
             onRemovePlayer={removePlayer}
             onUpdatePlayer={updatePlayer}
-            onNumTeamsChange={setNumTeams}
+            onAddPrePair={addPrePair}
+            onRemovePrePair={removePrePair}
+            onImportExcel={importFromExcel}
+            onTabChange={setActiveTab}
+            onGenerate={handleGoReview}
+          />
+        )}
+
+        {step === 'review' && (
+          <ReviewStep
+            players={validPlayers}
+            prePairs={prePairs}
+            onBack={() => setStep('setup')}
             onGenerate={handleGenerate}
+          />
+        )}
+
+        {step === 'generating' && (
+          <GeneratingStep
+            names={validPlayers.map((p) => p.name)}
+            onDone={teams.length > 0 ? handleReshuffleDone : handleGeneratingDone}
           />
         )}
 
         {step === 'result' && (
           <ResultStep
             teams={teams}
-            maxRating={maxRating}
+            awards={awards}
             onReshuffle={handleReshuffle}
             onReset={handleReset}
+            onGoAward={() => setStep('awarding')}
+          />
+        )}
+
+        {step === 'awarding' && (
+          <AwardingStep
+            teams={teams}
+            awards={awards}
+            onSetAward={handleSetAward}
+            onBack={() => setStep('result')}
+            onReveal={() => setStep('ceremony')}
+          />
+        )}
+
+        {step === 'ceremony' && (
+          <CeremonyStep
+            teams={teams}
+            awards={awards}
+            onDone={() => setStep('result')}
           />
         )}
       </div>
@@ -101,102 +202,136 @@ export default function App() {
   );
 }
 
-/* ── Setup Step ─────────────────────────────────────────── */
+/* ────────────────────────────────── Setup ────────────────────────────────── */
 
 interface SetupProps {
   players: Player[];
-  numTeams: number;
+  prePairs: PrePair[];
+  validCount: number;
+  expectedTeams: number;
+  activeTab: 'manual' | 'excel';
+  canGenerate: boolean;
+  bottomRef: React.RefObject<HTMLDivElement | null>;
   onAddPlayer: () => void;
   onRemovePlayer: (id: string) => void;
-  onUpdatePlayer: (id: string, field: keyof Player, value: string | number) => void;
-  onNumTeamsChange: (n: number) => void;
+  onUpdatePlayer: (id: string, name: string) => void;
+  onAddPrePair: (p1Id: string, p2Id: string) => void;
+  onRemovePrePair: (id: string) => void;
+  onImportExcel: (players: Player[], prePairs: PrePair[]) => void;
+  onTabChange: (tab: 'manual' | 'excel') => void;
   onGenerate: () => void;
 }
 
-function SetupStep({ players, numTeams, onAddPlayer, onRemovePlayer, onUpdatePlayer, onNumTeamsChange, onGenerate }: SetupProps) {
-  const canGenerate = players.length >= numTeams && players.length >= 2;
+function SetupStep({
+  players, prePairs, validCount, expectedTeams, activeTab, canGenerate, bottomRef,
+  onAddPlayer, onRemovePlayer, onUpdatePlayer, onAddPrePair, onRemovePrePair, onImportExcel, onTabChange, onGenerate,
+}: SetupProps) {
+  const pairedIds = new Set(prePairs.flatMap((p) => [p.p1Id, p.p2Id]));
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 팀 수 선택 */}
-      <div className="rounded-3xl p-5 bg-white" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm font-semibold" style={{ color: '#191F28' }}>팀 수</span>
-          <span className="text-sm font-bold" style={{ color: '#3182F6' }}>{numTeams}팀</span>
-        </div>
-        <div className="flex gap-2">
-          {[2, 3, 4, 5, 6].map((n) => (
+      {/* 탭 */}
+      <div className="flex rounded-2xl p-1 gap-1" style={{ backgroundColor: '#E5E8EB' }}>
+        {(['manual', 'excel'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => onTabChange(tab)}
+            className="flex-1 h-9 rounded-xl text-sm font-semibold"
+            style={{
+              backgroundColor: activeTab === tab ? 'white' : 'transparent',
+              color: activeTab === tab ? '#191F28' : '#8B95A1',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+            }}
+          >
+            {tab === 'manual' ? '직접 입력' : '엑셀 업로드'}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'manual' && (
+        <>
+          {/* 참가자 카드 */}
+          <div className="rounded-3xl p-5 bg-white flex flex-col gap-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold" style={{ color: '#191F28' }}>
+                참가자
+                <span className="ml-1.5 text-xs font-normal" style={{ color: '#8B95A1' }}>{validCount}명</span>
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {players.map((p, i) => (
+                <PlayerRow
+                  key={p.id}
+                  player={p}
+                  index={i}
+                  isPaired={pairedIds.has(p.id)}
+                  onUpdate={onUpdatePlayer}
+                  onRemove={onRemovePlayer}
+                />
+              ))}
+            </div>
+            <div ref={bottomRef} />
+
             <button
-              key={n}
               type="button"
-              onClick={() => onNumTeamsChange(n)}
-              className="flex-1 h-10 rounded-xl text-sm font-semibold"
+              onClick={onAddPlayer}
+              disabled={players.length >= MAX_PLAYERS}
+              className="w-full h-10 rounded-2xl text-sm font-semibold flex items-center justify-center gap-1.5"
               style={{
-                backgroundColor: n === numTeams ? '#3182F6' : '#F2F4F6',
-                color: n === numTeams ? 'white' : '#6B7684',
+                backgroundColor: '#F2F4F6',
+                color: players.length >= MAX_PLAYERS ? '#B0B8C1' : '#6B7684',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: players.length >= MAX_PLAYERS ? 'not-allowed' : 'pointer',
               }}
             >
-              {n}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2V12M2 7H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              참가자 추가
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 플레이어 목록 */}
-      <div className="rounded-3xl p-5 bg-white" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm font-semibold" style={{ color: '#191F28' }}>
-            참가자
-            <span className="ml-2 text-xs font-normal" style={{ color: '#8B95A1' }}>
-              {players.length}명
-            </span>
-          </span>
-          <div className="flex items-center gap-1 text-xs" style={{ color: '#8B95A1' }}>
-            <span>실력</span>
-            <span style={{ fontSize: 10 }}>●●●●●</span>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-2">
-          {players.map((player, i) => (
-            <PlayerRow
-              key={player.id}
-              player={player}
-              index={i}
-              onUpdate={onUpdatePlayer}
-              onRemove={onRemovePlayer}
+          {/* 사전 팀 카드 */}
+          <div className="rounded-3xl p-5 bg-white flex flex-col gap-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold" style={{ color: '#191F28' }}>
+                사전 팀
+                {prePairs.length > 0 && (
+                  <span className="ml-1.5 text-xs font-normal" style={{ color: '#8B95A1' }}>{prePairs.length}쌍</span>
+                )}
+              </span>
+              <span className="text-xs" style={{ color: '#8B95A1' }}>미리 짝을 정한 경우</span>
+            </div>
+
+            <PrePairSection
+              players={players}
+              prePairs={prePairs}
+              onAdd={onAddPrePair}
+              onRemove={onRemovePrePair}
             />
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={onAddPlayer}
-          className="mt-3 w-full h-11 rounded-2xl text-sm font-semibold flex items-center justify-center gap-1.5"
-          style={{
-            backgroundColor: '#F2F4F6',
-            color: '#6B7684',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          참가자 추가
-        </button>
-      </div>
-
-      {/* 에러 메시지 */}
-      {!canGenerate && players.length > 0 && (
-        <p className="text-xs text-center" style={{ color: '#FF6B6B' }}>
-          참가자 수({players.length}명)가 팀 수({numTeams}팀) 이상이어야 해요
-        </p>
+          </div>
+        </>
       )}
 
-      {/* 팀 생성 버튼 */}
+      {activeTab === 'excel' && (
+        <div className="rounded-3xl p-5 bg-white" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <ExcelImport onImport={onImportExcel} />
+        </div>
+      )}
+
+      {/* 예상 팀 수 */}
+      {canGenerate && (
+        <div className="flex items-center justify-between px-4 py-3 rounded-2xl" style={{ backgroundColor: '#EBF3FE' }}>
+          <span className="text-sm" style={{ color: '#3182F6' }}>예상 팀 수</span>
+          <span className="text-sm font-bold" style={{ color: '#3182F6' }}>{expectedTeams}팀</span>
+        </div>
+      )}
+
+      {/* 생성 버튼 */}
       <button
         type="button"
         onClick={onGenerate}
@@ -207,119 +342,110 @@ function SetupStep({ players, numTeams, onAddPlayer, onRemovePlayer, onUpdatePla
           color: 'white',
           border: 'none',
           cursor: canGenerate ? 'pointer' : 'not-allowed',
-          boxShadow: canGenerate ? '0 4px 16px rgba(49,130,246,0.35)' : 'none',
+          boxShadow: canGenerate ? '0 4px 16px rgba(49,130,246,0.3)' : 'none',
         }}
       >
-        팀 자동 구성하기
+        랜덤 팀 구성하기
       </button>
     </div>
   );
 }
 
-/* ── Result Step ─────────────────────────────────────────── */
+/* ────────────────────────────────── Result ────────────────────────────────── */
 
 interface ResultProps {
-  teams: Team[];
-  maxRating: number;
+  teams: PairedTeam[];
+  awards: Record<number, Award>;
   onReshuffle: () => void;
   onReset: () => void;
+  onGoAward: () => void;
 }
 
-function ResultStep({ teams, maxRating, onReshuffle, onReset }: ResultProps) {
-  const ratings = teams.map((t) => t.totalRating);
-  const minR = Math.min(...ratings);
-  const maxR = Math.max(...ratings);
-  const diff = maxR - minR;
+function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultProps) {
+  const preFormedCount = teams.filter((t) => t.isPreFormed).length;
+  const randomCount = teams.length - preFormedCount;
+  const awardedCount = Object.keys(awards).length;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 밸런스 요약 */}
       <div className="rounded-3xl p-5 bg-white" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold" style={{ color: '#191F28' }}>밸런스 분석</span>
-          <span
-            className="text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={{
-              backgroundColor: diff <= 1 ? '#F0FFF4' : diff <= 3 ? '#FFF8E1' : '#FFF0F0',
-              color: diff <= 1 ? '#22A757' : diff <= 3 ? '#D4A017' : '#E53E3E',
-            }}
-          >
-            {diff <= 1 ? '완벽 밸런스 🎯' : diff <= 3 ? '양호 밸런스 👍' : '불균형 주의 ⚠️'}
-          </span>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#EBF3FE' }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M4 10L8 14L16 6" stroke="#3182F6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold" style={{ color: '#191F28' }}>총 {teams.length}팀 구성 완료</p>
+            <p className="text-xs" style={{ color: '#8B95A1' }}>
+              {preFormedCount > 0 && `사전팀 ${preFormedCount}쌍 · `}랜덤 {randomCount}팀
+              {awardedCount > 0 && ` · 시상 ${awardedCount}팀`}
+            </p>
+          </div>
         </div>
-
-        {/* 팀별 점수 바 */}
         <div className="flex flex-col gap-2">
-          {teams.map((t, i) => {
-            const pct = maxRating > 0 ? (t.totalRating / maxRating) * 100 : 0;
-            const bg = TEAM_COLORS_BG[i % TEAM_COLORS_BG.length];
-            return (
-              <div key={t.id} className="flex items-center gap-2">
-                <span className="text-xs font-semibold w-10 text-right" style={{ color: '#6B7684' }}>
-                  팀{t.id}
-                </span>
-                <div className="flex-1 h-2 rounded-full" style={{ backgroundColor: '#F2F4F6' }}>
-                  <div
-                    className="h-2 rounded-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: bg === '#EBF3FE' ? '#3182F6' : bg === '#FFF0F0' ? '#FF6B6B' : bg === '#F0FFF4' ? '#26DE81' : bg === '#FFF8E1' ? '#FFCA28' : bg === '#F3E8FF' ? '#9B59B6' : '#FF9F43',
-                      transition: 'width 0.4s ease',
-                    }}
-                  />
-                </div>
-                <span className="text-xs font-semibold w-8" style={{ color: '#191F28' }}>
-                  {t.totalRating}점
-                </span>
-              </div>
-            );
-          })}
+          {preFormedCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: '#F0FFF4' }}>
+              <span className="text-xs font-semibold" style={{ color: '#22A757' }}>🔒 사전 팀</span>
+              <span className="text-xs" style={{ color: '#6B7684' }}>{preFormedCount}팀 — 신청 그대로 유지</span>
+            </div>
+          )}
+          {randomCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: '#F2F4F6' }}>
+              <span className="text-xs font-semibold" style={{ color: '#4E5968' }}>🎲 랜덤 팀</span>
+              <span className="text-xs" style={{ color: '#6B7684' }}>{randomCount}팀 — 무작위 배정</span>
+            </div>
+          )}
         </div>
-
-        <p className="mt-3 text-xs" style={{ color: '#8B95A1' }}>
-          최대 점수 차이: <strong style={{ color: '#191F28' }}>{diff}점</strong>
-        </p>
       </div>
 
-      {/* 팀 카드 */}
-      {teams.map((t) => (
-        <TeamCard
-          key={t.id}
-          team={t}
-          avgRating={t.players.length > 0 ? t.totalRating / t.players.length : 0}
-        />
-      ))}
+      <div className="grid grid-cols-2 gap-3">
+        {teams.map((team) => (
+          <TeamCard
+            key={team.teamNumber}
+            team={team}
+            award={awards[team.teamNumber] ?? null}
+          />
+        ))}
+      </div>
 
-      {/* 액션 버튼 */}
-      <div className="flex gap-3 mt-2">
+      <div className="flex gap-3">
         <button
           type="button"
           onClick={onReshuffle}
-          className="flex-1 h-13 rounded-2xl text-sm font-semibold"
-          style={{
-            backgroundColor: '#F2F4F6',
-            color: '#4E5968',
-            border: 'none',
-            cursor: 'pointer',
-          }}
+          className="flex-1 h-12 rounded-2xl text-sm font-semibold"
+          style={{ backgroundColor: '#F2F4F6', color: '#4E5968', border: 'none', cursor: 'pointer' }}
         >
           다시 섞기
         </button>
         <button
           type="button"
           onClick={onReset}
-          className="flex-1 h-13 rounded-2xl text-sm font-bold"
-          style={{
-            backgroundColor: '#3182F6',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(49,130,246,0.35)',
-          }}
+          className="flex-1 h-12 rounded-2xl text-sm font-bold"
+          style={{ backgroundColor: '#3182F6', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(49,130,246,0.3)' }}
         >
           처음부터
         </button>
       </div>
+
+      {/* 시상 진입 — 발표자용 비공개 버튼 */}
+      <button
+        type="button"
+        onClick={onGoAward}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'block',
+          margin: '0 auto',
+          padding: '4px 12px',
+          fontSize: 11,
+          color: awardedCount > 0 ? '#B8860B' : '#C9CDD3',
+          opacity: 0.5,
+        }}
+      >
+        {awardedCount > 0 ? `🏆 ${awardedCount}팀 시상 지정됨` : '🏆'}
+      </button>
     </div>
   );
 }
