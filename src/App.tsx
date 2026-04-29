@@ -143,9 +143,8 @@ export default function App() {
         {/* 헤더 — setup 화면에서만 표시 */}
         {step === 'setup' && (
           <div className="mb-6 text-center">
-            {/* Douzone × Replit Makeathon 2026 로고 */}
-            <div className="inline-flex flex-col items-center justify-center mb-2">
-              <p className="text-base font-extrabold leading-tight" style={{ color: '#191F28' }}>
+            <div className="inline-flex flex-col items-center gap-1 mb-2">
+              <p className="text-xl font-extrabold tracking-tight" style={{ color: '#191F28' }}>
                 DOUZONE <span style={{ color: '#F97316' }}>×</span> Replit
               </p>
               <p className="text-sm font-semibold" style={{ color: '#8B95A1' }}>
