@@ -144,17 +144,11 @@ export default function App() {
         {step === 'setup' && (
           <div className="mb-6 text-center">
             {/* Douzone × Replit Makeathon 2026 로고 */}
-            <div
-              className="inline-flex flex-col items-center justify-center px-5 py-3 rounded-2xl mb-3"
-              style={{ backgroundColor: '#1B2254' }}
-            >
-              <p className="text-xs font-semibold tracking-widest uppercase mb-0.5" style={{ color: '#9CA3C8', letterSpacing: '0.15em' }}>
-                Team Maker
+            <div className="inline-flex flex-col items-center justify-center mb-2">
+              <p className="text-base font-extrabold leading-tight" style={{ color: '#191F28' }}>
+                DOUZONE <span style={{ color: '#F97316' }}>×</span> Replit
               </p>
-              <p className="text-sm font-extrabold leading-tight" style={{ color: 'white', letterSpacing: '-0.01em' }}>
-                Douzone <span style={{ color: '#F97316' }}>×</span> Replit
-              </p>
-              <p className="text-xs font-bold" style={{ color: '#CBD5E1' }}>
+              <p className="text-sm font-semibold" style={{ color: '#8B95A1' }}>
                 Makeathon 2026
               </p>
             </div>
