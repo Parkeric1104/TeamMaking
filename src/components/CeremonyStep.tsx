@@ -58,9 +58,6 @@ export default function CeremonyStep({ teams, awards, onDone }: Props) {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold" style={{ color: award.color }}>{award.label}</p>
                 <p className="text-sm font-semibold" style={{ color: '#191F28' }}>
-                  팀 {team.teamNumber}
-                </p>
-                <p className="text-xs truncate" style={{ color: '#8B95A1' }}>
                   {team.players.map((p) => p.name).join(' · ')}
                 </p>
               </div>
@@ -129,9 +126,6 @@ export default function CeremonyStep({ teams, awards, onDone }: Props) {
         {/* 팀 정보 */}
         {revealed ? (
           <div className="flex flex-col items-center gap-2" style={{ animation: 'ceremonyReveal 0.35s ease-out' }}>
-            <p className="text-2xl font-bold" style={{ color: '#191F28' }}>
-              팀 {entry.team.teamNumber}
-            </p>
             <div className="flex flex-wrap justify-center gap-2">
               {entry.team.players.map((player) => (
                 <span
@@ -146,9 +140,6 @@ export default function CeremonyStep({ teams, awards, onDone }: Props) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl font-bold" style={{ color: '#191F28', filter: 'blur(6px)' }}>
-              팀 ??
-            </p>
             <div className="flex gap-2">
               {entry.team.players.map((player) => (
                 <span
