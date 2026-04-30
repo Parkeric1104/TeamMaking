@@ -19,17 +19,41 @@ function createPlayer(name = ''): Player {
 
 const STORAGE_KEY = 'tm_state';
 
-function loadState() {
+type SavedState = {
+  step: Step;
+  players: Player[];
+  prePairs: PrePair[];
+  teams: PairedTeam[];
+  awards: Record<number, Award>;
+};
+
+function encodeShareUrl(teams: PairedTeam[], awards: Record<number, Award>): string {
+  const data = JSON.stringify({ teams, awards });
+  return btoa(encodeURIComponent(data));
+}
+
+function decodeShareUrl(hash: string): Pick<SavedState, 'teams' | 'awards'> | null {
+  try {
+    return JSON.parse(decodeURIComponent(atob(hash)));
+  } catch {
+    return null;
+  }
+}
+
+function loadState(): SavedState | null {
+  // URL 해시에서 먼저 복원 (공유 링크)
+  const hash = window.location.hash.slice(1);
+  if (hash) {
+    const decoded = decodeShareUrl(hash);
+    if (decoded?.teams?.length) {
+      return { step: 'result', players: [], prePairs: [], ...decoded };
+    }
+  }
+  // localStorage 폴백
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as {
-      step: Step;
-      players: Player[];
-      prePairs: PrePair[];
-      teams: PairedTeam[];
-      awards: Record<number, Award>;
-    };
+    return JSON.parse(raw) as SavedState;
   } catch {
     return null;
   }
@@ -51,6 +75,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, players, prePairs, teams, awards }));
   }, [step, players, prePairs, teams, awards]);
+
+  /* ── URL 해시 동기화 (result일 때만) ── */
+  useEffect(() => {
+    if ((step === 'result' || step === 'awarding' || step === 'ceremony') && teams.length > 0) {
+      window.history.replaceState(null, '', '#' + encodeShareUrl(teams, awards));
+    } else if (step === 'setup') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, [step, teams, awards]);
 
   /* ── 참가자 조작 ── */
   const addPlayer = useCallback(() => {
@@ -383,6 +416,13 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
   const preFormedCount = teams.filter((t) => t.isPreFormed).length;
   const randomCount = teams.length - preFormedCount;
   const awardedCount = Object.keys(awards).length;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -427,11 +467,12 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
         ))}
       </div>
 
-      <div className="flex gap-3 max-w-sm">
+      {/* 액션 버튼 행 */}
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onReshuffle}
-          className="flex-1 h-12 rounded-2xl text-sm font-semibold"
+          className="h-12 rounded-2xl text-sm font-semibold px-6 no-print"
           style={{ backgroundColor: '#F2F4F6', color: '#4E5968', border: 'none', cursor: 'pointer' }}
         >
           다시 섞기
@@ -439,17 +480,36 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
         <button
           type="button"
           onClick={onReset}
-          className="flex-1 h-12 rounded-2xl text-sm font-bold"
+          className="h-12 rounded-2xl text-sm font-bold px-6 no-print"
           style={{ backgroundColor: '#3182F6', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(49,130,246,0.3)' }}
         >
           처음부터
         </button>
+        <div className="flex gap-2 ml-auto no-print">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+            style={{ backgroundColor: copied ? '#F0FFF4' : '#F2F4F6', color: copied ? '#22A757' : '#6B7684', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            {copied ? '✓ 복사됨' : '🔗 URL 공유'}
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+            style={{ backgroundColor: '#F2F4F6', color: '#6B7684', border: 'none', cursor: 'pointer' }}
+          >
+            🖨️ 인쇄
+          </button>
+        </div>
       </div>
 
       {/* 시상 진입 — 발표자용 비공개 버튼 */}
       <button
         type="button"
         onClick={onGoAward}
+        className="no-print"
         style={{
           background: 'none',
           border: 'none',
@@ -464,6 +524,14 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
       >
         {awardedCount > 0 ? `🏆 ${awardedCount}팀 시상 지정됨` : '🏆'}
       </button>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          .min-h-screen { background: white !important; }
+        }
+      `}</style>
     </div>
   );
 }
