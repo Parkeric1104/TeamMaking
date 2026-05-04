@@ -17,13 +17,17 @@ interface Props {
   award?: Award | null;
   onAwardClick?: () => void;
   onUpdateName?: (name: string) => void;
+  onUpdatePlayerName?: (playerId: string, name: string) => void;
 }
 
-export default function TeamCard({ team, award, onAwardClick, onUpdateName }: Props) {
+export default function TeamCard({ team, award, onAwardClick, onUpdateName, onUpdatePlayerName }: Props) {
   const p = PALETTES[(team.teamNumber - 1) % PALETTES.length];
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(team.teamName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [playerDraft, setPlayerDraft] = useState('');
+  const playerInputRef = useRef<HTMLInputElement>(null);
 
   const accentColor = award ? award.color : p.accent;
 
@@ -38,6 +42,18 @@ export default function TeamCard({ team, award, onAwardClick, onUpdateName }: Pr
     const trimmed = draft.trim() || team.teamName;
     onUpdateName?.(trimmed);
     setEditing(false);
+  };
+
+  const startEditPlayer = (playerId: string, currentName: string) => {
+    if (!onUpdatePlayerName) return;
+    setEditingPlayerId(playerId);
+    setPlayerDraft(currentName);
+    setTimeout(() => playerInputRef.current?.select(), 0);
+  };
+
+  const commitPlayerName = (playerId: string, fallback: string) => {
+    onUpdatePlayerName?.(playerId, playerDraft.trim() || fallback);
+    setEditingPlayerId(null);
   };
 
   return (
@@ -134,12 +150,42 @@ export default function TeamCard({ team, award, onAwardClick, onUpdateName }: Pr
         {team.players.map((player) => (
           <div
             key={player.id}
-            className="flex-1 flex items-center justify-center py-3 rounded-xl bg-white"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            className="flex-1 flex items-center justify-center py-2 rounded-xl bg-white"
+            style={{
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              cursor: onUpdatePlayerName ? 'text' : 'default',
+              minHeight: 44,
+            }}
+            onClick={() => editingPlayerId !== player.id && startEditPlayer(player.id, player.name)}
           >
-            <span className="text-sm font-semibold text-center px-1 leading-tight" style={{ color: '#191F28' }}>
-              {player.name || '(이름 없음)'}
-            </span>
+            {editingPlayerId === player.id ? (
+              <input
+                ref={playerInputRef}
+                value={playerDraft}
+                onChange={(e) => setPlayerDraft(e.target.value)}
+                onBlur={() => commitPlayerName(player.id, player.name)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitPlayerName(player.id, player.name);
+                  if (e.key === 'Escape') setEditingPlayerId(null);
+                }}
+                className="w-full text-sm font-semibold text-center px-2 py-0.5 rounded-lg"
+                style={{
+                  color: '#191F28',
+                  border: `1.5px solid ${accentColor}`,
+                  outline: 'none',
+                  backgroundColor: 'white',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span
+                className="text-sm font-semibold text-center px-1 leading-tight"
+                style={{ color: '#191F28' }}
+                title={onUpdatePlayerName ? '클릭하여 이름 수정' : undefined}
+              >
+                {player.name || '(이름 없음)'}
+              </span>
+            )}
           </div>
         ))}
       </div>

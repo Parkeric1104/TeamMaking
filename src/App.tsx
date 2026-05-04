@@ -159,6 +159,14 @@ export default function App() {
     setTeams((prev) => prev.map((t) => t.teamNumber === teamNumber ? { ...t, teamName: name } : t));
   }, []);
 
+  const handleUpdatePlayerName = useCallback((teamNumber: number, playerId: string, name: string) => {
+    setTeams((prev) => prev.map((t) =>
+      t.teamNumber === teamNumber
+        ? { ...t, players: t.players.map((p) => p.id === playerId ? { ...p, name } : p) as typeof t.players }
+        : t
+    ));
+  }, []);
+
   const handleReset = () => {
     localStorage.removeItem(STORAGE_KEY);
     setStep('setup');
@@ -249,6 +257,7 @@ export default function App() {
             onReset={handleReset}
             onGoAward={() => setStep('awarding')}
             onUpdateTeamName={handleUpdateTeamName}
+            onUpdatePlayerName={handleUpdatePlayerName}
           />
         )}
 
@@ -432,9 +441,10 @@ interface ResultProps {
   onReset: () => void;
   onGoAward: () => void;
   onUpdateTeamName: (teamNumber: number, name: string) => void;
+  onUpdatePlayerName: (teamNumber: number, playerId: string, name: string) => void;
 }
 
-function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward, onUpdateTeamName }: ResultProps) {
+function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward, onUpdateTeamName, onUpdatePlayerName }: ResultProps) {
   const preFormedCount = teams.filter((t) => t.isPreFormed).length;
   const randomCount = teams.length - preFormedCount;
   const awardedCount = Object.keys(awards).length;
@@ -486,6 +496,7 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward, onUpdateTe
             team={team}
             award={awards[team.teamNumber] ?? null}
             onUpdateName={(name) => onUpdateTeamName(team.teamNumber, name)}
+            onUpdatePlayerName={(playerId, name) => onUpdatePlayerName(team.teamNumber, playerId, name)}
           />
         ))}
       </div>
