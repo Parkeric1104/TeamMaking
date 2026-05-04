@@ -52,7 +52,7 @@ export default function AwardingStep({ teams, awards, onSetAward, onBack, onReve
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold" style={{ color: '#191F28' }}>
-                    팀 {team.teamNumber}
+                    {team.teamName}
                   </p>
                   <p className="text-xs truncate" style={{ color: '#8B95A1', maxWidth: 160 }}>
                     {team.players.map((p) => p.name).join(' · ')}
