@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import type { Award, PairedTeam } from '../types';
 
 const PALETTES = [
@@ -15,14 +16,33 @@ interface Props {
   team: PairedTeam;
   award?: Award | null;
   onAwardClick?: () => void;
+  onUpdateName?: (name: string) => void;
 }
 
-export default function TeamCard({ team, award, onAwardClick }: Props) {
+export default function TeamCard({ team, award, onAwardClick, onUpdateName }: Props) {
   const p = PALETTES[(team.teamNumber - 1) % PALETTES.length];
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(team.teamName);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const accentColor = award ? award.color : p.accent;
+
+  const handleNameClick = () => {
+    if (!onUpdateName) return;
+    setDraft(team.teamName);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  };
+
+  const commitName = () => {
+    const trimmed = draft.trim() || team.teamName;
+    onUpdateName?.(trimmed);
+    setEditing(false);
+  };
 
   return (
     <div
-      className="rounded-2xl p-4 flex flex-col gap-3 relative"
+      className="rounded-2xl p-4 flex flex-col gap-3"
       style={{
         backgroundColor: award ? award.bg : p.bg,
         border: award ? `2px solid ${award.color}33` : '2px solid transparent',
@@ -30,25 +50,56 @@ export default function TeamCard({ team, award, onAwardClick }: Props) {
       }}
     >
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-            style={{ backgroundColor: award ? award.color : p.accent }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+            style={{ backgroundColor: accentColor }}
           >
             {team.teamNumber}
           </div>
-          <span className="text-sm font-bold" style={{ color: '#191F28' }}>
-            팀 {team.teamNumber}
-          </span>
+
+          {/* 팀명 — 클릭하면 편집 */}
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitName();
+                if (e.key === 'Escape') setEditing(false);
+              }}
+              className="flex-1 min-w-0 text-sm font-bold rounded-lg px-1.5 py-0.5"
+              style={{
+                color: '#191F28',
+                border: `1.5px solid ${accentColor}`,
+                outline: 'none',
+                backgroundColor: 'white',
+              }}
+            />
+          ) : (
+            <span
+              className="text-sm font-bold truncate"
+              style={{
+                color: '#191F28',
+                cursor: onUpdateName ? 'text' : 'default',
+              }}
+              onClick={handleNameClick}
+              title={onUpdateName ? '클릭하여 팀명 수정' : undefined}
+            >
+              {team.teamName}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1.5">
+
+        <div className="flex items-center gap-1 flex-shrink-0">
           {team.isPreFormed && !award && (
             <span
               className="text-xs font-semibold px-2 py-0.5 rounded-full"
               style={{ backgroundColor: p.accent + '22', color: p.text }}
             >
-              사전 팀
+              사전
             </span>
           )}
           {award && (
@@ -68,7 +119,7 @@ export default function TeamCard({ team, award, onAwardClick }: Props) {
                 backgroundColor: award ? award.color + '22' : '#E5E8EB',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: 14,
+                fontSize: 13,
               }}
               title="시상하기"
             >
@@ -83,7 +134,7 @@ export default function TeamCard({ team, award, onAwardClick }: Props) {
         {team.players.map((player) => (
           <div
             key={player.id}
-            className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl bg-white gap-1"
+            className="flex-1 flex items-center justify-center py-3 rounded-xl bg-white"
             style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <span className="text-sm font-semibold text-center px-1 leading-tight" style={{ color: '#191F28' }}>

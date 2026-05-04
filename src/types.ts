@@ -7,10 +7,12 @@ export interface PrePair {
   id: string;
   p1Id: string;
   p2Id: string;
+  teamName?: string;
 }
 
 export interface PairedTeam {
   teamNumber: number;
+  teamName: string;
   players: [Player, Player] | [Player, Player, Player];
   isPreFormed: boolean;
 }

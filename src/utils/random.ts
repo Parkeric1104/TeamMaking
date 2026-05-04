@@ -9,19 +9,29 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export function makeRandomTeams(players: Player[], prePairs: PrePair[]): PairedTeam[] {
+export function makeRandomTeams(
+  players: Player[],
+  prePairs: PrePair[],
+  randomTeamNames: string[] = [],
+): PairedTeam[] {
   const teams: PairedTeam[] = [];
   let teamNumber = 1;
+  let randomNameIndex = 0;
 
   const playerMap = new Map(players.map((p) => [p.id, p]));
   const usedIds = new Set<string>();
 
-  // 사전 팀 먼저
+  // 사전 팀 먼저 (팀명 그대로 사용)
   for (const pair of prePairs) {
     const p1 = playerMap.get(pair.p1Id);
     const p2 = playerMap.get(pair.p2Id);
     if (p1 && p2) {
-      teams.push({ teamNumber: teamNumber++, players: [p1, p2], isPreFormed: true });
+      teams.push({
+        teamNumber: teamNumber++,
+        teamName: pair.teamName ?? `팀 ${teamNumber - 1}`,
+        players: [p1, p2],
+        isPreFormed: true,
+      });
       usedIds.add(p1.id);
       usedIds.add(p2.id);
     }
@@ -31,7 +41,15 @@ export function makeRandomTeams(players: Player[], prePairs: PrePair[]): PairedT
   const solos = shuffle(players.filter((p) => !usedIds.has(p.id)));
   for (let i = 0; i < solos.length; i += 2) {
     if (i + 1 < solos.length) {
-      teams.push({ teamNumber: teamNumber++, players: [solos[i], solos[i + 1]], isPreFormed: false });
+      const name =
+        randomTeamNames[randomNameIndex] ?? `팀 ${teamNumber}`;
+      randomNameIndex++;
+      teams.push({
+        teamNumber: teamNumber++,
+        teamName: name,
+        players: [solos[i], solos[i + 1]],
+        isPreFormed: false,
+      });
     } else {
       // 홀수 남은 경우 마지막 팀에 추가
       const last = teams[teams.length - 1];
