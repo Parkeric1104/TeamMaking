@@ -3,7 +3,7 @@ import type { Player, PrePair } from '../types';
 import { parseExcel } from '../utils/excel';
 
 interface Props {
-  onImport: (players: Player[], prePairs: PrePair[]) => void;
+  onImport: (players: Player[], prePairs: PrePair[], randomTeamNames: string[]) => void;
 }
 
 export default function ExcelImport({ onImport }: Props) {
@@ -16,8 +16,8 @@ export default function ExcelImport({ onImport }: Props) {
     setError('');
     setLoading(true);
     try {
-      const { players, prePairs } = await parseExcel(file);
-      onImport(players, prePairs);
+      const { players, prePairs, randomTeamNames } = await parseExcel(file);
+      onImport(players, prePairs, randomTeamNames);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -74,19 +74,28 @@ export default function ExcelImport({ onImport }: Props) {
         <p className="text-xs text-center whitespace-pre-line" style={{ color: '#FF6B6B' }}>{error}</p>
       )}
 
-      <div className="px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#F2F4F6' }}>
-        <p className="text-xs font-semibold mb-1" style={{ color: '#6B7684' }}>엑셀 양식 안내</p>
-        <div className="grid grid-cols-2 gap-1">
-          {[['A열', '이름 (필수)'], ['B열', '사전팀 (선택)']].map(([col, desc]) => (
-            <div key={col} className="flex items-center gap-1">
-              <span className="text-xs font-bold" style={{ color: '#3182F6' }}>{col}</span>
-              <span className="text-xs" style={{ color: '#8B95A1' }}>{desc}</span>
-            </div>
-          ))}
+      <div className="px-3 py-2.5 rounded-xl flex flex-col gap-2" style={{ backgroundColor: '#F2F4F6' }}>
+        <div>
+          <p className="text-xs font-semibold mb-1" style={{ color: '#6B7684' }}>시트 1 · 참가자 목록</p>
+          <div className="grid grid-cols-2 gap-1">
+            {[['A열', '이름 (필수)'], ['B열', '팀이름 (선택)']].map(([col, desc]) => (
+              <div key={col} className="flex items-center gap-1">
+                <span className="text-xs font-bold" style={{ color: '#3182F6' }}>{col}</span>
+                <span className="text-xs" style={{ color: '#8B95A1' }}>{desc}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs mt-1" style={{ color: '#8B95A1' }}>
+            팀이름이 같은 두 사람은 자동으로 한 팀이 돼요
+          </p>
         </div>
-        <p className="text-xs mt-1.5" style={{ color: '#8B95A1' }}>
-          사전팀 번호가 같은 두 사람은 자동으로 한 팀이 돼요
-        </p>
+        <div style={{ borderTop: '1px solid #E5E8EB', paddingTop: 6 }}>
+          <p className="text-xs font-semibold mb-1" style={{ color: '#6B7684' }}>시트 2 · 랜덤 팀이름 목록</p>
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-bold" style={{ color: '#3182F6' }}>A열</span>
+            <span className="text-xs" style={{ color: '#8B95A1' }}>랜덤 배정 팀이름</span>
+          </div>
+        </div>
       </div>
 
       <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFileChange} />

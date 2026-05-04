@@ -9,6 +9,7 @@ import ReviewStep from './components/ReviewStep';
 import GeneratingStep from './components/GeneratingStep';
 import AwardingStep from './components/AwardingStep';
 import CeremonyStep from './components/CeremonyStep';
+import { Minihompy } from './components/Minihompy';
 
 const MAX_TEAMS = 50;
 const MAX_PLAYERS = MAX_TEAMS * 2;
@@ -60,6 +61,7 @@ function loadState(): SavedState | null {
 }
 
 export default function App() {
+  const [showMinihompy, setShowMinihompy] = useState(false);
   const saved = loadState();
   const [step, setStep] = useState<Step>(saved?.step ?? 'setup');
   const [players, setPlayers] = useState<Player[]>(
@@ -68,6 +70,7 @@ export default function App() {
   const [prePairs, setPrePairs] = useState<PrePair[]>(saved?.prePairs ?? []);
   const [teams, setTeams] = useState<PairedTeam[]>(saved?.teams ?? []);
   const [awards, setAwards] = useState<Record<number, Award>>(saved?.awards ?? {});
+  const [randomTeamNames, setRandomTeamNames] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'manual' | 'excel'>('manual');
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -112,12 +115,13 @@ export default function App() {
   }, []);
 
   /* ── 엑셀 임포트 ── */
-  const importFromExcel = useCallback((imported: Player[], importedPairs: PrePair[]) => {
+  const importFromExcel = useCallback((imported: Player[], importedPairs: PrePair[], importedRandomNames: string[]) => {
     setPlayers((prev) => {
       const merged = [...prev.filter((p) => p.name), ...imported];
       return merged.slice(0, MAX_PLAYERS);
     });
     setPrePairs((prev) => [...prev, ...importedPairs]);
+    if (importedRandomNames.length > 0) setRandomTeamNames(importedRandomNames);
     setActiveTab('manual');
   }, []);
 
@@ -138,18 +142,22 @@ export default function App() {
   }, []);
 
   const handleGeneratingDone = useCallback(() => {
-    setTeams(makeRandomTeams(validPlayers, prePairs));
+    setTeams(makeRandomTeams(validPlayers, prePairs, randomTeamNames));
     setStep('result');
-  }, [validPlayers, prePairs]);
+  }, [validPlayers, prePairs, randomTeamNames]);
 
   const handleReshuffle = () => {
     setStep('generating');
   };
 
   const handleReshuffleDone = useCallback(() => {
-    setTeams(makeRandomTeams(validPlayers, prePairs));
+    setTeams(makeRandomTeams(validPlayers, prePairs, randomTeamNames));
     setStep('result');
-  }, [validPlayers, prePairs]);
+  }, [validPlayers, prePairs, randomTeamNames]);
+
+  const handleUpdateTeamName = useCallback((teamNumber: number, name: string) => {
+    setTeams((prev) => prev.map((t) => t.teamNumber === teamNumber ? { ...t, teamName: name } : t));
+  }, []);
 
   const handleReset = () => {
     localStorage.removeItem(STORAGE_KEY);
@@ -171,17 +179,29 @@ export default function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F2F4F6' }}>
+      {showMinihompy && <Minihompy onClose={() => setShowMinihompy(false)} />}
       <div className="mx-auto max-w-5xl px-6 pb-16 pt-10">
 
         {/* 헤더 — setup 화면에서만 표시 */}
         {step === 'setup' && (
-          <div className="mb-8 text-center">
+          <div className="mb-8 text-center relative">
             <p className="text-2xl font-extrabold tracking-tight" style={{ color: '#191F28' }}>
               DOUZONE <span style={{ color: '#F97316' }}>×</span> Replit
             </p>
             <p className="text-base font-semibold mt-0.5" style={{ color: '#8B95A1' }}>
               Makeathon 2026 · Team Maker
             </p>
+            <button
+              onClick={() => setShowMinihompy(true)}
+              style={{
+                position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 11, color: '#C9CDD3', padding: '4px 8px',
+              }}
+              title="Cy★World 미니홈피"
+            >
+              Cy★
+            </button>
           </div>
         )}
 
@@ -228,6 +248,7 @@ export default function App() {
             onReshuffle={handleReshuffle}
             onReset={handleReset}
             onGoAward={() => setStep('awarding')}
+            onUpdateTeamName={handleUpdateTeamName}
           />
         )}
 
@@ -268,7 +289,7 @@ interface SetupProps {
   onUpdatePlayer: (id: string, name: string) => void;
   onAddPrePair: (p1Id: string, p2Id: string) => void;
   onRemovePrePair: (id: string) => void;
-  onImportExcel: (players: Player[], prePairs: PrePair[]) => void;
+  onImportExcel: (players: Player[], prePairs: PrePair[], randomTeamNames: string[]) => void;
   onTabChange: (tab: 'manual' | 'excel') => void;
   onGenerate: () => void;
 }
@@ -410,9 +431,10 @@ interface ResultProps {
   onReshuffle: () => void;
   onReset: () => void;
   onGoAward: () => void;
+  onUpdateTeamName: (teamNumber: number, name: string) => void;
 }
 
-function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultProps) {
+function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward, onUpdateTeamName }: ResultProps) {
   const preFormedCount = teams.filter((t) => t.isPreFormed).length;
   const randomCount = teams.length - preFormedCount;
   const awardedCount = Object.keys(awards).length;
@@ -463,6 +485,7 @@ function ResultStep({ teams, awards, onReshuffle, onReset, onGoAward }: ResultPr
             key={team.teamNumber}
             team={team}
             award={awards[team.teamNumber] ?? null}
+            onUpdateName={(name) => onUpdateTeamName(team.teamNumber, name)}
           />
         ))}
       </div>
